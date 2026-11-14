@@ -1,180 +1,39 @@
-(() => {
-  "use strict";
-  const $ = (id) => document.getElementById(id);
-  const alphabets = {
-    latin: "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""),
-    cyrillic: "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ".split(""),
-    digits: "0123456789".split("")
-  };
-  const state = { glyphs: {}, active: "A", alphabet: "latin" };
-  const pad = $("pad");
-  const ctx = pad.getContext("2d");
-  let drawing = false, currentStroke = [];
-
-  function strokes() { return state.glyphs[state.active] || []; }
-  function drawBackground() {
-    ctx.fillStyle = "#f2eee6"; ctx.fillRect(0, 0, 640, 640);
-    ctx.strokeStyle = "#ded8cc"; ctx.lineWidth = 1; ctx.setLineDash([6, 9]);
-    ctx.beginPath(); ctx.moveTo(320, 24); ctx.lineTo(320, 616);
-    ctx.moveTo(24, 320); ctx.lineTo(616, 320); ctx.stroke(); ctx.setLineDash([]);
-    ctx.strokeStyle = "#e1dbd0"; ctx.setLineWidth = 1;
-    ctx.strokeRect(48, 48, 544, 544);
-  }
-  function drawPath(list, width) {
-    ctx.strokeStyle = "#28222e"; ctx.lineWidth = width;
-    ctx.lineCap = "round"; ctx.lineJoin = "round";
-    list.forEach(path => {
-      if (!path || path.length < 2) return;
-      ctx.beginPath(); ctx.moveTo(path[0][0], path[0][1]);
-      path.slice(1).forEach(point => ctx.lineTo(point[0], point[1]));
-      ctx.stroke();
-    });
-  }
-  function redraw() {
-    drawBackground();
-    const all = [...strokes()];
-    if (currentStroke.length) all.push(currentStroke);
-    drawPath(all, Number($("strokeWidth").value) || 5);
-    updateProperties();
-  }
-  function pointerPosition(event) {
-    const rect = pad.getBoundingClientRect();
-    return [
-      Math.max(0, Math.min(640, (event.clientX - rect.left) * 640 / rect.width)),
-      Math.max(0, Math.min(640, (event.clientY - rect.top) * 640 / rect.height))
-    ];
-  }
-  pad.addEventListener("pointerdown", event => {
-    drawing = true; currentStroke = [pointerPosition(event)];
-    pad.setPointerCapture(event.pointerId); redraw();
-  });
-  pad.addEventListener("pointermove", event => {
-    if (!drawing) return;
-    currentStroke.push(pointerPosition(event)); redraw();
-  });
-  function finishStroke() {
-    if (!drawing) return;
-    drawing = false;
-    if (currentStroke.length > 1) {
-      state.glyphs[state.active] ||= [];
-      state.glyphs[state.active].push(currentStroke);
-    }
-    currentStroke = []; redraw(); renderGrid();
-  }
-  pad.addEventListener("pointerup", finishStroke);
-  pad.addEventListener("pointercancel", finishStroke);
-  pad.addEventListener("lostpointercapture", finishStroke);
-
-  function updateProperties() {
-    $("currentGlyph").textContent = state.active;
-    $("propSymbol").textContent = state.active;
-    $("propStrokes").textContent = strokes().length;
-    $("propStatus").textContent = strokes().length ? "Есть рисунок" : "Пустой";
-    $("widthValue").textContent = $("strokeWidth").value;
-  }
-  function selectGlyph(character) {
-    state.active = character || "A";
-    $("glyphName").value = state.active;
-    redraw(); renderGrid();
-  }
-  function renderGrid() {
-    const grid = $("glyphGrid");
-    if (!grid) return;
-    grid.innerHTML = "";
-    const chars = alphabets[state.alphabet];
-    chars.forEach(character => {
-      const count = (state.glyphs[character] || []).length;
-      const button = document.createElement("button");
-      button.className = "glyph-cell" + (count ? " done" : "") + (character === state.active ? " selected" : "");
-      const strong = document.createElement("strong"); strong.textContent = character;
-      const small = document.createElement("small"); small.textContent = count ? `${count} штрих.` : "• пусто";
-      button.append(strong, small);
-      button.addEventListener("click", () => {
-        selectGlyph(character);
-        navigate("glyph");
-      });
-      grid.appendChild(button);
-    });
-    const filled = Object.keys(state.glyphs).filter(key => (state.glyphs[key] || []).length).length;
-    $("mappingCount").textContent = `${filled} символов заполнено`;
-  }
-
-  function navigate(view) {
-    const target = document.getElementById(`view-${view}`);
-    if (!target) return;
-    document.querySelectorAll(".view").forEach(section => section.classList.toggle("active", section === target));
-    document.querySelectorAll(".nav-link[data-view]").forEach(link => link.classList.toggle("active", link.dataset.view === view));
-    $("crumbCurrent").textContent = target.dataset.title || "Обзор";
-    document.getElementById("sidebar").classList.remove("open");
-    history.replaceState(null, "", `#${view}`);
-    window.scrollTo({top: 0, behavior: "smooth"});
-  }
-  document.querySelectorAll("[data-go]").forEach(button => button.addEventListener("click", () => navigate(button.dataset.go)));
-  document.querySelectorAll(".nav-link[data-view]").forEach(link => link.addEventListener("click", event => {
-    event.preventDefault(); navigate(link.dataset.view);
-  }));
-  $("menuBtn").addEventListener("click", () => $("sidebar").classList.toggle("open"));
-
-  $("glyphName").addEventListener("change", event => selectGlyph(event.target.value.trim().slice(0, 8) || "A"));
-  $("strokeWidth").addEventListener("input", redraw);
-  $("undoBtn").addEventListener("click", () => { strokes().pop(); redraw(); renderGrid(); });
-  $("clearBtn").addEventListener("click", () => { state.glyphs[state.active] = []; redraw(); renderGrid(); });
-
-  $("alphabetTabs").addEventListener("click", event => {
-    const tab = event.target.closest("[data-alphabet]");
-    if (!tab) return;
-    state.alphabet = tab.dataset.alphabet;
-    document.querySelectorAll(".tab").forEach(item => item.classList.toggle("active", item === tab));
-    renderGrid();
-  });
-
-  $("sampleText").addEventListener("input", () => $("previewText").textContent = $("sampleText").value);
-  $("insertAlphabet").addEventListener("click", () => {
-    $("sampleText").value = alphabets[state.alphabet].join("");
-    $("previewText").textContent = $("sampleText").value;
-  });
-
-  function download(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url; anchor.download = filename;
-    document.body.appendChild(anchor); anchor.click(); anchor.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-  $("saveBtn").addEventListener("click", () => {
-    const payload = { app: "RuneFoundry", version: 2, savedAt: new Date().toISOString(), glyphs: state.glyphs };
-    download(new Blob([JSON.stringify(payload, null, 2)], {type: "application/json"}), "runefoundry-project.json");
-  });
-  $("loadFile").addEventListener("change", async event => {
-    const file = event.target.files && event.target.files[0];
-    if (!file) return;
-    try {
-      const data = JSON.parse(await file.text());
-      if (!data.glyphs || typeof data.glyphs !== "object") throw new Error("Invalid project");
-      state.glyphs = data.glyphs;
-      const first = Object.keys(state.glyphs).find(key => Array.isArray(state.glyphs[key])) || "A";
-      selectGlyph(first); renderGrid();
-      alert("Проект загружен.");
-    } catch (error) {
-      alert("Не удалось загрузить проект. Проверь, что выбран JSON-файл RuneFoundry.");
-    }
-    event.target.value = "";
-  });
-  $("exportBtn").addEventListener("click", () => {
-    const paths = strokes();
-    const width = Number($("strokeWidth").value) || 5;
-    const pathMarkup = paths.filter(path => path.length > 1).map(path => {
-      const commands = path.map((point, index) => `${index ? "L" : "M"} ${point[0].toFixed(1)} ${point[1].toFixed(1)}`).join(" ");
-      return `<path d="${commands}" fill="none" stroke="#28222e" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`;
-    }).join("");
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><title>Rune ${state.active}</title>${pathMarkup}</svg>`;
-    download(new Blob([svg], {type: "image/svg+xml"}), `rune-${state.active}.svg`);
-  });
-
-  const initial = location.hash.replace("#", "");
-  if (initial && document.getElementById(`view-${initial}`)) navigate(initial);
-  renderGrid(); redraw();
-  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-    window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
-  }
+(()=>{"use strict";
+const $=id=>document.getElementById(id),KEY="runefoundry-project-v3",MAX=5*1024*1024;
+const alphabets={latin:[..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"],cyrillic:[..."АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"],digits:[..."0123456789"]};
+const state={glyphs:{},active:"A",alphabet:"latin"},pad=$("pad"),ctx=pad.getContext("2d");let drawing=false,stroke=[],timer;
+function paths(){return state.glyphs[state.active]||[]}
+function bg(){ctx.fillStyle="#f2eee6";ctx.fillRect(0,0,640,640);ctx.strokeStyle="#ded8cc";ctx.lineWidth=1;ctx.setLineDash([6,9]);ctx.beginPath();ctx.moveTo(320,24);ctx.lineTo(320,616);ctx.moveTo(24,320);ctx.lineTo(616,320);ctx.stroke();ctx.setLineDash([]);ctx.strokeRect(48,48,544,544)}
+function draw(){bg();[...paths(),...(stroke.length?[stroke]:[])].forEach(p=>{if(p.length<2)return;ctx.beginPath();ctx.moveTo(...p[0]);p.slice(1).forEach(q=>ctx.lineTo(...q));ctx.strokeStyle="#28222e";ctx.lineWidth=+$("strokeWidth").value||5;ctx.lineCap=ctx.lineJoin="round";ctx.stroke()});$("currentGlyph").textContent=$("propSymbol").textContent=state.active;$("propStrokes").textContent=paths().length;$("propStatus").textContent=paths().length?"Есть рисунок":"Пустой";$("widthValue").textContent=$("strokeWidth").value}
+function point(e){let r=pad.getBoundingClientRect();return [Math.max(0,Math.min(640,(e.clientX-r.left)*640/r.width)),Math.max(0,Math.min(640,(e.clientY-r.top)*640/r.height))]}
+pad.addEventListener("pointerdown",e=>{drawing=true;stroke=[point(e)];pad.setPointerCapture(e.pointerId);draw()});
+pad.addEventListener("pointermove",e=>{if(!drawing)return;let p=point(e),q=stroke.at(-1);if(!q||Math.hypot(p[0]-q[0],p[1]-q[1])>1)stroke.push(p);draw()});
+function finish(){if(!drawing)return;drawing=false;if(stroke.length===1)stroke.push([...stroke[0]]);if(stroke.length>1){(state.glyphs[state.active]||= []).push(stroke);saveSoon()}stroke=[];draw();grid()}
+pad.addEventListener("pointerup",finish);pad.addEventListener("pointercancel",finish);pad.addEventListener("lostpointercapture",finish);
+function select(c){if(!c||[...c].length>8)return;state.active=c;$("glyphName").value=c;draw();grid()}
+function grid(){let el=$("glyphGrid");el.replaceChildren();alphabets[state.alphabet].forEach(c=>{let n=(state.glyphs[c]||[]).length,b=document.createElement("button");b.className="glyph-cell"+(n?" done":"")+(c===state.active?" selected":"");let s=document.createElement("b"),t=document.createElement("small");s.textContent=c;t.textContent=n?`${n} штрих.`:"пусто";b.append(s,t);b.onclick=()=>{select(c);nav("glyph")};el.append(b)});$("mappingCount").textContent=Object.values(state.glyphs).filter(x=>x.length).length+" символов заполнено"}
+function nav(v){let target=$("view-"+v);if(!target)return;document.querySelectorAll(".view").forEach(x=>x.classList.toggle("active",x===target));document.querySelectorAll("[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view===v));history.replaceState(null,"","#"+v);$("sidebar").classList.remove("open")}
+document.querySelectorAll("[data-go]").forEach(x=>x.onclick=()=>nav(x.dataset.go));document.querySelectorAll("[data-view]").forEach(x=>x.onclick=e=>{e.preventDefault();nav(x.dataset.view)});$("menuBtn").onclick=()=>$("sidebar").classList.toggle("open");
+$("glyphName").onchange=e=>{let c=e.target.value.trim();if(!c||[...c].length>8){alert("Введите символ длиной от 1 до 8 знаков");e.target.value=state.active;return}select(c);saveSoon()};
+$("strokeWidth").oninput=draw;$("undoBtn").onclick=()=>{paths().pop();draw();grid();saveSoon()};$("clearBtn").onclick=()=>{if(confirm("Очистить рисунок?")){state.glyphs[state.active]=[];draw();grid();saveSoon()}};
+$("alphabetTabs").onclick=e=>{let t=e.target.closest("[data-alphabet]");if(!t)return;state.alphabet=t.dataset.alphabet;document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===t));grid()};
+$("sampleText").oninput=()=>$("previewText").textContent=$("sampleText").value;$("insertAlphabet").onclick=()=>{$("sampleText").value=alphabets[state.alphabet].join("");$("previewText").textContent=$("sampleText").value};
+function payload(){return {app:"RuneFoundry",version:3,savedAt:new Date().toISOString(),glyphs:state.glyphs}}
+function saveSoon(){$("autosaveStatus").textContent="Сохранение…";clearTimeout(timer);timer=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(payload()));$("autosaveStatus").textContent="Автосохранено"}catch{$("autosaveStatus").textContent="Автосохранение недоступно"}},300)}
+function validate(d){if(!d||typeof d!=="object"||Array.isArray(d)||!d.glyphs||typeof d.glyphs!=="object"||Array.isArray(d.glyphs))throw Error("Неверная структура проекта");let entries=Object.entries(d.glyphs);if(entries.length>512)throw Error("Слишком много глифов");let result={};for(let [k,strokes] of entries){if(!k||[...k].length>8||!Array.isArray(strokes)||strokes.length>300)throw Error("Неверная запись глифа");result[k]=strokes.map(s=>{if(!Array.isArray(s)||s.length<2||s.length>5000)throw Error("Неверный штрих");return s.map(p=>{if(!Array.isArray(p)||p.length!==2)throw Error("Неверная точка");let x=Number(p[0]),y=Number(p[1]);if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||x>640||y<0||y>640)throw Error("Координаты за пределами поля");return [x,y]})})}return result}
+function dl(blob,name){let u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1200)}
+$("saveBtn").onclick=()=>dl(new Blob([JSON.stringify(payload(),null,2)],{type:"application/json"}),"runefoundry-project.json");
+$("loadFile").onchange=async e=>{let f=e.target.files[0];if(!f)return;try{if(f.size>MAX)throw Error("Файл больше 5 МБ");let g=validate(JSON.parse(await f.text()));state.glyphs=g;select(Object.keys(g)[0]||"A");grid();saveSoon();alert("Проект проверен и загружен")}catch(err){alert("Не удалось загрузить: "+err.message+". Текущая работа не изменена")}finally{e.target.value=""}};
+function esc(s){return String(s).replace(/[<>&'"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;","'":"&apos;",'"':"&quot;"}[c]))}
+function filename(s){return [...s].map(c=>/[a-z0-9_-]/i.test(c)?c:"u"+c.codePointAt(0).toString(16)).join("")}
+function svg(c){let ps=state.glyphs[c]||[],all=ps.flat();if(!all.length)return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"/>`;let xs=all.map(p=>p[0]),ys=all.map(p=>p[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);if(maxX-minX<1){minX-=.5;maxX+=.5}if(maxY-minY<1){minY-=.5;maxY+=.5}let side=Math.max(maxX-minX,maxY-minY)+36,scale=900/side,ox=500-(minX+maxX)*scale/2,oy=500-(minY+maxY)*scale/2;let body=ps.map(p=>`<path d="${p.map((q,i)=>(i?"L":"M")+(q[0]*scale+ox).toFixed(2)+" "+(q[1]*scale+oy).toFixed(2)).join(" ")}" fill="none" stroke="#17131d" stroke-width="${Math.max(2,5*scale)}" stroke-linecap="round" stroke-linejoin="round"/>`).join("");return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><title>${esc(c)}</title>${body}</svg>`}
+$("exportBtn").onclick=()=>dl(new Blob([svg(state.active)],{type:"image/svg+xml"}),"rune-"+filename(state.active)+".svg");
+// ZIP archive writer, STORE method; no network dependency.
+let table=(()=>{let t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc(b){let c=0xffffffff;for(let x of b)c=table[(c^x)&255]^(c>>>8);return(c^0xffffffff)>>>0}
+function zip(files){let enc=new TextEncoder(),local=[],central=[],off=0;for(let f of files){let n=enc.encode(f.name),d=enc.encode(f.data),c=crc(d),l=new Uint8Array(30+n.length+d.length),v=new DataView(l.buffer),u16=(p,x)=>v.setUint16(p,x,true),u32=(p,x)=>v.setUint32(p,x>>>0,true);u32(0,0x04034b50);u16(4,20);u16(6,0x800);u16(8,0);u32(14,c);u32(18,d.length);u32(22,d.length);u16(26,n.length);l.set(n,30);l.set(d,30+n.length);local.push(l);let h=new Uint8Array(46+n.length),w=new DataView(h.buffer),a=(p,x)=>w.setUint16(p,x,true),b=(p,x)=>w.setUint32(p,x>>>0,true);b(0,0x02014b50);a(4,20);a(6,20);a(8,0x800);b(16,c);b(20,d.length);b(24,d.length);a(28,n.length);b(42,off);h.set(n,46);central.push(h);off+=l.length}let size=central.reduce((s,x)=>s+x.length,0),end=new Uint8Array(22),v=new DataView(end.buffer);v.setUint32(0,0x06054b50,true);v.setUint16(8,files.length,true);v.setUint16(10,files.length,true);v.setUint32(12,size,true);v.setUint32(16,off,true);return new Blob([...local,...central,end],{type:"application/zip"})}
+$("zipBtn").onclick=()=>{let fs=[{name:"runefoundry-project.json",data:JSON.stringify(payload(),null,2)},{name:"README.txt",data:"RuneFoundry project bundle: JSON and normalized SVG glyphs. Not a TTF/OTF font."}],count=0;for(let [c,p] of Object.entries(state.glyphs))if(p.length){fs.push({name:"glyphs/"+filename(c)+".svg",data:svg(c)});count++}if(!count){alert("Сначала нарисуй хотя бы один знак");return}dl(zip(fs),"runefoundry-project-bundle.zip")};
+try{let raw=localStorage.getItem(KEY);if(raw)state.glyphs=validate(JSON.parse(raw)),$("autosaveStatus").textContent="Последний проект восстановлен"}catch{$("autosaveStatus").textContent="Не удалось восстановить автосохранение"}
+let hash=location.hash.slice(1);if(hash)nav(hash);$("previewText").textContent=$("sampleText").value;grid();draw();
+if("serviceWorker"in navigator&&location.protocol.startsWith("http"))addEventListener("load",async()=>{try{let r=await navigator.serviceWorker.register("./sw.js");if(r.waiting)r.waiting.postMessage({type:"SKIP_WAITING"});r.addEventListener("updatefound",()=>{let w=r.installing;if(w)w.addEventListener("statechange",()=>{if(w.state==="installed"&&navigator.serviceWorker.controller)w.postMessage({type:"SKIP_WAITING"})})});let once=false;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!once){once=true;location.reload()}})}catch(e){console.warn(e)}});
 })();

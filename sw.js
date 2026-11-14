@@ -1,25 +1,6 @@
-const CACHE_NAME = "runefoundry-shell-v1";
-const APP_FILES = [
-  "./",
-  "./index.html",
-  "./styles.css",
-  "./app.js",
-  "./manifest.webmanifest",
-  "./assets/favicon.svg"
-];
-self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES)));
-  self.skipWaiting();
-});
-self.addEventListener("activate", event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))));
-  self.clients.claim();
-});
-self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") return;
-  event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
-    const copy = response.clone();
-    caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-    return response;
-  }).catch(() => caches.match("./index.html"))));
-});
+const CACHE="runefoundry-shell-v3";
+const FILES=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest","./assets/favicon.svg"];
+self.addEventListener("install",e=>e.waitUntil((async()=>{let c=await caches.open(CACHE);await c.addAll(FILES);await self.skipWaiting()})()));
+self.addEventListener("activate",e=>e.waitUntil((async()=>{let keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith("runefoundry-")&&k!==CACHE).map(k=>caches.delete(k)));await self.clients.claim()})()));
+self.addEventListener("message",e=>{if(e.data?.type==="SKIP_WAITING")self.skipWaiting()});
+self.addEventListener("fetch",e=>{let r=e.request;if(r.method!=="GET")return;let u=new URL(r.url);if(u.origin!==location.origin)return;if(r.mode==="navigate"){e.respondWith((async()=>{try{let fresh=await fetch(r,{cache:"no-store"});if(fresh.ok)(await caches.open(CACHE)).put("./index.html",fresh.clone());return fresh}catch{return await caches.match("./index.html")||Response.error()}})());return}e.respondWith((async()=>{let cached=await caches.match(r);if(cached)return cached;try{let fresh=await fetch(r);if(fresh.ok)(await caches.open(CACHE)).put(r,fresh.clone());return fresh}catch{return Response.error()}})())});
