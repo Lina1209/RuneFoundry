@@ -1,98 +1,134 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RuneFoundry — Лаборатория рунических шрифтов</title>
-<style>
-:root{--bg:#111218;--panel:#1b1d27;--panel2:#242735;--ink:#f2eee7;--muted:#a9a6b2;--accent:#c7a6ff;--line:#383b4b}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui, sans-serif}
-header{padding:22px clamp(16px,4vw,48px);border-bottom:1px solid var(--line);background:#151620}
-h1{margin:0;font-size:clamp(25px,4vw,38px);letter-spacing:.03em}header p{margin:5px 0 0;color:var(--muted)}
-main{max-width:1200px;margin:auto;padding:24px clamp(14px,3vw,32px) 48px}
-.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
-button,.filelabel{border:1px solid var(--line);background:var(--panel2);color:var(--ink);padding:10px 14px;border-radius:10px;cursor:pointer;font:inherit}
-button.primary{background:var(--accent);color:#171321;border-color:var(--accent);font-weight:700}
-button:hover,.filelabel:hover{filter:brightness(1.12)}
-.layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:18px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
-.card h2{font-size:18px;margin:0 0 12px}
-.canvas-wrap{background:#f5f1e9;border-radius:12px;overflow:hidden}
-canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
-.hint{font-size:13px;color:var(--muted);margin:10px 0 0}
-.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}
-label{color:var(--muted);font-size:14px}
-input,select,textarea{background:#10121a;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px;font:inherit;min-width:0}
-input[type=text]{width:100%}input[type=number]{width:88px}
-.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
-.glyph{min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:9px;background:#151722;cursor:pointer}
-.glyph.active{outline:2px solid var(--accent);background:#292337}
-.glyph strong{font-size:22px}.glyph small{font-size:11px;color:var(--muted)}
-.preview{min-height:100px;padding:15px;background:#10121a;border:1px solid var(--line);border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:25px}
-.status{color:var(--muted);font-size:13px;margin-top:10px}
-@media(max-width:760px){.layout{grid-template-columns:1fr}.grid{grid-template-columns:repeat(5,1fr)}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111018">
+  <meta name="description" content="RuneFoundry — творческая лаборатория для создания рунических и авторских шрифтов.">
+  <title>RuneFoundry — творческая лаборатория</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header><h1>RuneFoundry</h1><p>Творческая лаборатория рунических шрифтов · первая рабочая версия</p></header>
-<main>
-  <div class="toolbar">
-    <button class="primary" id="saveBtn">Сохранить проект JSON</button>
-    <label class="filelabel">Загрузить проект JSON <input id="loadFile" type="file" accept=".json,application/json" hidden></label>
-    <button id="exportBtn">Экспорт рисунка SVG</button>
-    <button id="clearBtn">Очистить знак</button>
-  </div>
-  <div class="layout">
-    <section class="card">
-      <h2>Мастерская знака</h2>
-      <div class="row">
-        <label for="glyphName">Знак / буква</label>
-        <input id="glyphName" type="text" value="A" maxlength="8" style="width:100px">
-        <label for="strokeWidth">Толщина</label>
-        <input id="strokeWidth" type="number" min="1" max="24" value="5">
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#home" aria-label="RuneFoundry — главная">
+        <span class="brand-mark">ᚱ</span>
+        <span><b>RuneFoundry</b><small>CREATIVE LAB</small></span>
+      </a>
+      <div class="side-label">МАСТЕРСКАЯ</div>
+      <nav class="nav" aria-label="Главная навигация">
+        <a class="nav-link active" href="#home" data-view="home"><span>⌂</span> Обзор лаборатории</a>
+        <a class="nav-link" href="#glyph" data-view="glyph"><span>✳</span> Редактор знаков</a>
+        <a class="nav-link" href="#mapping" data-view="mapping"><span>⌗</span> Алфавит и таблица</a>
+        <a class="nav-link" href="#preview" data-view="preview"><span>◫</span> Предпросмотр текста</a>
+        <a class="nav-link" href="#export" data-view="export"><span>⇧</span> Экспорт и проекты</a>
+      </nav>
+      <div class="side-label side-label-lower">ЛАБОРАТОРИЯ</div>
+      <div class="nav nav-static">
+        <span class="nav-link disabled"><span>⌁</span> Векторная студия <em>скоро</em></span>
+        <span class="nav-link disabled"><span>⟷</span> Метрики и кернинг <em>скоро</em></span>
+        <span class="nav-link disabled"><span>◈</span> Проверка шрифта <em>скоро</em></span>
       </div>
-      <div class="canvas-wrap"><canvas id="pad" width="600" height="600" aria-label="Поле рисования руны"></canvas></div>
-      <p class="hint">Рисуй пальцем или мышью. Выбери букву справа, чтобы создать отдельный знак для неё.</p>
-    </section>
-    <section class="card">
-      <h2>Таблица символов</h2>
-      <div class="row">
-        <label for="alphabet">Алфавит</label>
-        <select id="alphabet"><option value="latin">Латиница A–Z</option><option value="cyrillic">Кириллица А–Я</option><option value="digits">Цифры 0–9</option></select>
+      <div class="sidebar-bottom">
+        <span class="status-dot"></span>
+        <span>Локальный режим</span>
+        <small>Проекты сохраняются у вас</small>
       </div>
-      <div class="grid" id="glyphGrid"></div>
-      <h2 style="margin-top:20px">Предпросмотр текста</h2>
-      <textarea id="sampleText" rows="3" style="width:100%" placeholder="Напиши текст для проверки...">RuneFoundry</textarea>
-      <div class="preview" id="preview">RuneFoundry</div>
-      <div class="status" id="status">Проект хранится в этом браузере до экспорта JSON.</div>
-    </section>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="mobile-menu" id="menuBtn" aria-label="Открыть меню">☰</button>
+        <div class="crumb">Творческая лаборатория <span>/</span> <b id="crumbCurrent">Обзор</b></div>
+        <div class="top-actions"><span class="version-pill">PREVIEW 0.2</span><a class="github-link" href="https://github.com/Lina1209/RuneFoundry" target="_blank" rel="noopener">GitHub ↗</a></div>
+      </header>
+
+      <section class="view active" id="view-home" data-title="Обзор">
+        <div class="hero">
+          <div class="hero-copy">
+            <div class="eyebrow"><span></span> DIGITAL TYPE & SYMBOL WORKSHOP</div>
+            <h1>Создавай знаки.<br><i>Оживляй</i> алфавиты.</h1>
+            <p>Пространство для создания авторских шрифтов, рунических систем и собственных визуальных языков.</p>
+            <div class="hero-buttons">
+              <button class="btn btn-primary" data-go="glyph">Открыть мастерскую <span>→</span></button>
+              <button class="btn btn-quiet" data-go="mapping">Таблица символов</button>
+            </div>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+            <div class="sigil">ᚠ</div><div class="sigil-small s1">ᚱ</div><div class="sigil-small s2">ᛟ</div><div class="sigil-small s3">ᚷ</div>
+            <div class="art-caption">FORM / SYMBOL / LANGUAGE</div>
+          </div>
+        </div>
+        <div class="section-heading"><div><div class="eyebrow">ВАШЕ ПРОСТРАНСТВО</div><h2>Инструменты мастерской</h2></div><span class="muted">Этап 01 · Основа редактора</span></div>
+        <div class="tool-cards">
+          <button class="tool-card" data-go="glyph"><span class="tool-icon">✳</span><b>Редактор знаков</b><p>Рисуй символы пальцем, мышью или стилусом.</p><span class="card-arrow">Открыть →</span></button>
+          <button class="tool-card" data-go="mapping"><span class="tool-icon">⌗</span><b>Алфавит и таблица</b><p>Назначай отдельные знаки буквам и цифрам.</p><span class="card-arrow">Открыть →</span></button>
+          <button class="tool-card" data-go="preview"><span class="tool-icon">◫</span><b>Предпросмотр</b><p>Проверяй набор символов и тестовые надписи.</p><span class="card-arrow">Открыть →</span></button>
+          <button class="tool-card" data-go="export"><span class="tool-icon">⇧</span><b>Проекты и экспорт</b><p>Сохраняй работу и выгружай рисунки в SVG.</p><span class="card-arrow">Открыть →</span></button>
+        </div>
+        <div class="notice"><span>✧</span><div><b>Мастерская строится поэтапно</b><p>Сейчас доступна основа для рисования и хранения глифов. Генератор настоящих TTF/OTF, векторные контуры и расширенная проверка будут отдельными следующими этапами.</p></div></div>
+      </section>
+
+      <section class="view" id="view-glyph" data-title="Редактор знаков">
+        <div class="page-head"><div class="eyebrow">GLYPH STUDIO</div><h1>Редактор знаков</h1><p>Создай форму символа на рабочем поле. Каждый знак хранится отдельно в проекте.</p></div>
+        <div class="editor-layout">
+          <div class="panel drawing-panel">
+            <div class="panel-head"><div><h2>Рабочее поле</h2><small>Рисование штрихами</small></div><span class="live-tag">● LIVE CANVAS</span></div>
+            <div class="canvas-tools">
+              <label>Знак <input id="glyphName" type="text" value="A" maxlength="8"></label>
+              <label>Толщина <input id="strokeWidth" type="range" min="1" max="24" value="5"><output id="widthValue">5</output></label>
+              <button class="btn btn-small" id="undoBtn">↶ Отменить штрих</button>
+              <button class="btn btn-small" id="clearBtn">Очистить</button>
+            </div>
+            <div class="canvas-wrap"><canvas id="pad" width="640" height="640" aria-label="Поле для рисования знака"></canvas></div>
+            <div class="canvas-foot"><span>✧ Используй палец или мышь</span><span>Поле 640 × 640</span></div>
+          </div>
+          <div class="panel side-panel">
+            <div class="panel-head"><div><h2>Свойства знака</h2><small>Текущий символ</small></div></div>
+            <div class="current-glyph" id="currentGlyph">A</div>
+            <div class="property-row"><span>Символ</span><b id="propSymbol">A</b></div>
+            <div class="property-row"><span>Количество штрихов</span><b id="propStrokes">0</b></div>
+            <div class="property-row"><span>Статус</span><b class="accent-text" id="propStatus">Пустой</b></div>
+            <div class="tip-box">Совет: рисуй каждый символ крупно и оставляй немного свободного места по краям. Позже добавим точные векторные контуры и настройку метрик.</div>
+            <button class="btn btn-primary full" data-go="mapping">Перейти к таблице символов →</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-mapping" data-title="Алфавит и таблица">
+        <div class="page-head"><div class="eyebrow">CHARACTER MAP</div><h1>Алфавит и таблица</h1><p>Выбирай букву, чтобы перейти к её рисунку. Незаполненные символы отмечены точкой.</p></div>
+        <div class="panel">
+          <div class="mapping-toolbar"><div class="tabs" id="alphabetTabs"><button class="tab active" data-alphabet="latin">Латиница</button><button class="tab" data-alphabet="cyrillic">Кириллица</button><button class="tab" data-alphabet="digits">Цифры</button></div><span class="muted" id="mappingCount">0 символов заполнено</span></div>
+          <div class="glyph-grid" id="glyphGrid"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-preview" data-title="Предпросмотр текста">
+        <div class="page-head"><div class="eyebrow">TYPE PREVIEW</div><h1>Предпросмотр текста</h1><p>Проверяй написание и состав будущего набора символов.</p></div>
+        <div class="panel preview-panel">
+          <label class="field-label" for="sampleText">Тестовый текст</label>
+          <textarea id="sampleText" rows="4">RuneFoundry — творческая лаборатория</textarea>
+          <div class="preview-toolbar"><span class="muted">Текстовый образец</span><button class="btn btn-small" id="insertAlphabet">Вставить алфавит</button></div>
+          <div class="text-preview" id="previewText">RuneFoundry — творческая лаборатория</div>
+          <p class="help-text">Важно: сейчас это предпросмотр обычного текста. Подстановка нарисованных глифов появится после реализации движка шрифта и таблицы соответствий.</p>
+        </div>
+      </section>
+
+      <section class="view" id="view-export" data-title="Экспорт и проекты">
+        <div class="page-head"><div class="eyebrow">PROJECT & EXPORT</div><h1>Экспорт и проекты</h1><p>Сохраняй проект, продолжай работу позже и выгружай отдельные знаки.</p></div>
+        <div class="export-grid">
+          <div class="panel"><div class="export-icon">▣</div><h2>Файл проекта</h2><p>Сохраняет все нарисованные знаки в JSON. Этот файл можно загрузить обратно в RuneFoundry.</p><button class="btn btn-primary" id="saveBtn">Скачать проект JSON</button><label class="btn btn-quiet upload-label">Загрузить проект JSON<input id="loadFile" type="file" accept=".json,application/json" hidden></label></div>
+          <div class="panel"><div class="export-icon">◇</div><h2>Экспорт текущего знака</h2><p>Сохраняет рисунок выбранного символа в SVG. Это векторный файл изображения, но пока не шрифт TTF/OTF.</p><button class="btn btn-primary" id="exportBtn">Экспортировать SVG</button></div>
+        </div>
+        <div class="notice"><span>ⓘ</span><div><b>О формате шрифта</b><p>Экспорт устанавливаемых TTF/OTF ещё не подключён. Не загружай SVG как готовый шрифт — это изображение одного знака. Генератор шрифтов будет следующим крупным модулем.</p></div></div>
+      </section>
+
+      <footer class="footer"><span>RuneFoundry © 2026</span><span>Создано для тех, кто придумывает новые языки форм.</span></footer>
+    </main>
   </div>
-</main>
-<script>
-const pad=document.getElementById('pad'),ctx=pad.getContext('2d');
-const state={glyphs:{},active:'A'};
-let drawing=false, paths=[], current=[];
-function background(){ctx.fillStyle='#f5f1e9';ctx.fillRect(0,0,600,600);ctx.strokeStyle='#d9d2c6';ctx.lineWidth=1;ctx.setLineDash([5,8]);ctx.beginPath();ctx.moveTo(300,25);ctx.lineTo(300,575);ctx.moveTo(25,300);ctx.lineTo(575,300);ctx.stroke();ctx.setLineDash([])}
-function redraw(){background();const all=[...(state.glyphs[state.active]||[]),...(current.length?[current]:[])];ctx.strokeStyle='#24202a';ctx.lineWidth=Number(document.getElementById('strokeWidth').value)||5;ctx.lineCap='round';ctx.lineJoin='round';all.forEach(path=>{if(path.length<2)return;ctx.beginPath();ctx.moveTo(path[0][0],path[0][1]);path.slice(1).forEach(p=>ctx.lineTo(p[0],p[1]));ctx.stroke()})}
-function pos(e){const r=pad.getBoundingClientRect();return [(e.clientX-r.left)*600/r.width,(e.clientY-r.top)*600/r.height]}
-pad.addEventListener('pointerdown',e=>{drawing=true;current=[pos(e)];pad.setPointerCapture(e.pointerId);redraw()});
-pad.addEventListener('pointermove',e=>{if(!drawing)return;current.push(pos(e));redraw()});
-function finish(){if(!drawing)return;drawing=false;if(current.length>1){state.glyphs[state.active]??=[];state.glyphs[state.active].push(current)}current=[];redraw();renderGrid();updatePreview()}
-pad.addEventListener('pointerup',finish);pad.addEventListener('pointercancel',finish);
-const alphabets={latin:'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),cyrillic:'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'.split(''),digits:'0123456789'.split('')};
-function renderGrid(){const grid=document.getElementById('glyphGrid');grid.innerHTML='';alphabets[document.getElementById('alphabet').value].forEach(ch=>{const b=document.createElement('button');b.className='glyph'+(ch===state.active?' active':'');const count=(state.glyphs[ch]||[]).length;b.innerHTML='<strong>'+ch+'</strong><small>'+count+' штрих.</small>';b.onclick=()=>selectGlyph(ch);grid.appendChild(b)})}
-function selectGlyph(ch){state.active=ch;document.getElementById('glyphName').value=ch;redraw();renderGrid()}
-document.getElementById('glyphName').addEventListener('change',e=>selectGlyph(e.target.value.trim()||'A'));
-document.getElementById('alphabet').addEventListener('change',()=>{const first=alphabets[document.getElementById('alphabet').value][0];selectGlyph(first)});
-document.getElementById('strokeWidth').addEventListener('input',redraw);
-document.getElementById('clearBtn').onclick=()=>{state.glyphs[state.active]=[];redraw();renderGrid();updatePreview()};
-function updatePreview(){const s=document.getElementById('sampleText').value;document.getElementById('preview').textContent=s;document.getElementById('status').textContent='Создано знаков: '+Object.keys(state.glyphs).filter(k=>state.glyphs[k]?.length).length}
-document.getElementById('sampleText').addEventListener('input',updatePreview);
-document.getElementById('saveBtn').onclick=()=>{const blob=new Blob([JSON.stringify({app:'RuneFoundry',version:1,glyphs:state.glyphs},null,2)],{type:'application/json'});download(blob,'runefoundry-project.json')};
-document.getElementById('loadFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());state.glyphs=data.glyphs||{};selectGlyph(Object.keys(state.glyphs)[0]||'A');updatePreview()}catch{alert('Не удалось прочитать JSON-файл проекта.')}e.target.value=''};
-function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href)}
-document.getElementById('exportBtn').onclick=()=>{const pathsForGlyph=state.glyphs[state.active]||[];let body='';pathsForGlyph.forEach(path=>{if(path.length<2)return;body+='<path d="M '+path.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' L ')+'" fill="none" stroke="#24202a" stroke-width="'+(Number(document.getElementById('strokeWidth').value)||5)+'" stroke-linecap="round" stroke-linejoin="round"/>'});const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><rect width="600" height="600" fill="#f5f1e9"/>'+body+'</svg>';download(new Blob([svg],{type:'image/svg+xml'}),'rune-'+state.active+'.svg')};
-renderGrid();redraw();updatePreview();
-</script>
+  <script src="app.js"></script>
 </body>
 </html>
