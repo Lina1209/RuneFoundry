@@ -37,7 +37,7 @@ function makeFontPath(strokes,scale,minX,minY,radius){
  const map=p=>[80+(p[0]-minX)*scale,700-(p[1]-minY)*scale];
  const polygon=pts=>{if(pts.length<3)return;let q=map(pts[0]);path.moveTo(q[0],q[1]);for(let i=1;i<pts.length;i++){q=map(pts[i]);path.lineTo(q[0],q[1])}path.close()};
  const disk=p=>{const pts=[];for(let i=0;i<16;i++){const a=2*Math.PI*i/16;pts.push([p[0]+Math.cos(a)*radius,p[1]+Math.sin(a)*radius])}polygon(pts)};
- for(const line of strokes){if(!line.length)continue;if(line.length===1){disk(line[0]);continue}for(let i=0;i<line.length;i++){disk(line[i]);if(i===0)continue;const a=line[i-1],b=line[i],dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy);if(len<.01)continue;const nx=-dy/len*radius,ny=dx/len*radius;polygon([[a[0]+nx,a[1]+ny],[b[0]+nx,b[1]+ny],[b[0]-nx,b[1]-ny],[a[0]-nx,a[1]-ny]])}}
+ for(const line of strokes){if(!line.length)continue;if(line.length===1){disk(line[0]);continue}for(let i=0;i<line.length;i++){disk(line[i]);if(i===0)continue;const a=line[i-1],b=line[i],dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy);if(len<.01)continue;const nx=-dy/len*radius,ny=dx/len*radius;polygon([[a[0]-nx,a[1]-ny],[b[0]-nx,b[1]-ny],[b[0]+nx,b[1]+ny],[a[0]+nx,a[1]+ny]])}}
  return path;
 }
 function exportTtf(){
