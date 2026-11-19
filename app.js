@@ -9,7 +9,26 @@ function setTool(name){activeTool=name;document.querySelectorAll("[data-tool]").
 function bg(){ctx.fillStyle="#f2eee6";ctx.fillRect(0,0,640,640);ctx.strokeStyle="#ded8cc";ctx.lineWidth=1;ctx.setLineDash([6,9]);ctx.beginPath();ctx.moveTo(320,24);ctx.lineTo(320,616);ctx.moveTo(24,320);ctx.lineTo(616,320);ctx.stroke();ctx.setLineDash([]);ctx.strokeRect(48,48,544,544)}
 function draw(){bg();paths().forEach((p,i)=>{if(p.length<2)return;const st=toolStyle(kinds()[i]||"pen");ctx.beginPath();ctx.moveTo(...p[0]);p.slice(1).forEach(q=>ctx.lineTo(...q));ctx.strokeStyle="#28222e";ctx.globalAlpha=st.alpha;ctx.lineWidth=st.width;ctx.lineCap=ctx.lineJoin="round";ctx.stroke();ctx.globalAlpha=1});if(stroke.length>1&&activeTool!=="eraser"){const st=toolStyle(activeTool);ctx.beginPath();ctx.moveTo(...stroke[0]);stroke.slice(1).forEach(q=>ctx.lineTo(...q));ctx.strokeStyle="#28222e";ctx.globalAlpha=st.alpha;ctx.lineWidth=st.width;ctx.lineCap=ctx.lineJoin="round";ctx.stroke();ctx.globalAlpha=1}$("currentGlyph").textContent=$("propSymbol").textContent=state.active;$("propStrokes").textContent=paths().length;$("propStatus").textContent=paths().length?"Есть рисунок":"Пустой";$("widthValue").textContent=$("strokeWidth").value}
 function point(e){let r=pad.getBoundingClientRect();return [Math.max(0,Math.min(640,(e.clientX-r.left)*640/r.width)),Math.max(0,Math.min(640,(e.clientY-r.top)*640/r.height))]}
-function eraseAt(p){const radius=Math.max(9,(+$("strokeWidth").value||5)*2.5),old=paths(),oldKinds=kinds(),next=[],nextKinds=[];let any=false;for(let i=0;i<old.length;i++){const line=old[i],kind=oldKinds[i]||"pen";if(line.length<2)continue;let part=[],erased=false;const flush=()=>{if(part.length>1){next.push(part);nextKinds.push(kind)}part=[]};for(let j=0;j<line.length-1;j++){const a=line[j],b=line[j+1],len=Math.hypot(b[0]-a[0],b[1]-a[1]),steps=Math.max(1,Math.ceil(len/4));for(let k=0;k<=steps;k++){if(j>0&&k===0)continue;const t=k/steps,q=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];if(Math.hypot(q[0]-p[0],q[1]-p[1])<=radius){erased=true;any=true;flush()}else part.push(q)}}flush();if(!erased&&next.length===0&&i===0){/* retain handled below */}if(!erased){next.push(line);nextKinds.push(kind)}}if(any){state.glyphs[state.active]=next;state.strokeKinds[state.active]=nextKinds;saveSoon();grid()}}
+function eraseAt(p){
+ const radius=Math.max(9,(+$("strokeWidth").value||5)*2.5),old=paths(),oldKinds=kinds(),next=[],nextKinds=[];let any=false;
+ for(let i=0;i<old.length;i++){
+  const line=old[i],kind=oldKinds[i]||"pen";if(line.length<2)continue;
+  let segments=[],part=[],erased=false;
+  const flush=()=>{if(part.length>1)segments.push(part);part=[]};
+  for(let j=0;j<line.length-1;j++){
+   const a=line[j],b=line[j+1],len=Math.hypot(b[0]-a[0],b[1]-a[1]),steps=Math.max(1,Math.ceil(len/4));
+   for(let k=0;k<=steps;k++){
+    if(j>0&&k===0)continue;
+    const t=k/steps,q=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+    if(Math.hypot(q[0]-p[0],q[1]-p[1])<=radius){erased=true;flush()}else part.push(q);
+   }
+  }
+  flush();
+  if(erased){any=true;for(const segment of segments){next.push(segment);nextKinds.push(kind)}}
+  else{next.push(line);nextKinds.push(kind)}
+ }
+ if(any){state.glyphs[state.active]=next;state.strokeKinds[state.active]=nextKinds;saveSoon();grid()}
+}
 pad.addEventListener("pointerdown",e=>{drawing=true;pad.setPointerCapture(e.pointerId);if(activeTool==="eraser"){eraseAt(point(e));draw()}else{stroke=[point(e)];draw()}});
 pad.addEventListener("pointermove",e=>{if(!drawing)return;let p=point(e);if(activeTool==="eraser"){eraseAt(p);draw();return}let q=stroke.at(-1);if(!q||Math.hypot(p[0]-q[0],p[1]-q[1])>1)stroke.push(p);draw()});
 function finish(){if(!drawing)return;drawing=false;if(activeTool!=="eraser"){if(stroke.length===1)stroke.push([...stroke[0]]);if(stroke.length>1){(state.glyphs[state.active]||= []).push(stroke);(state.strokeKinds[state.active]||=[]).push(activeTool);saveSoon()}}stroke=[];draw();grid()}
