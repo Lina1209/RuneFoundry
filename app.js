@@ -30,6 +30,42 @@ function svg(c){let ps=state.glyphs[c]||[],all=ps.flat();if(!all.length)return `
 function png(){const source=paths();if(!source.length){alert("Сначала нарисуй знак");return}const c=document.createElement("canvas");c.width=1000;c.height=1000;const x=c.getContext("2d");x.fillStyle="#f2eee6";x.fillRect(0,0,1000,1000);const all=source.flat();const xs=all.map(p=>p[0]),ys=all.map(p=>p[1]);let minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);if(maxX-minX<1){minX-=.5;maxX+=.5}if(maxY-minY<1){minY-=.5;maxY+=.5}const scale=900/Math.max(maxX-minX,maxY-minY),ox=500-(minX+maxX)*scale/2,oy=500-(minY+maxY)*scale/2;for(const p of source){if(p.length<2)continue;x.beginPath();x.moveTo(p[0][0]*scale+ox,p[0][1]*scale+oy);p.slice(1).forEach(q=>x.lineTo(q[0]*scale+ox,q[1]*scale+oy));x.strokeStyle="#28222e";x.lineWidth=Math.max(2,(+$("#strokeWidth").value||5)*scale);x.lineCap=x.lineJoin="round";x.stroke()}c.toBlob(b=>{if(!b){alert("Не удалось создать PNG");return}dl(b,"rune-"+filename(state.active)+".png")},"image/png")}
 $("#savePngBtn").onclick=png;$("#saveSvgBtn").onclick=()=>dl(new Blob([svg(state.active)],{type:"image/svg+xml"}),"rune-"+filename(state.active)+".svg");
 $("exportBtn").onclick=()=>dl(new Blob([svg(state.active)],{type:"image/svg+xml"}),"rune-"+filename(state.active)+".svg");
+
+function fontSafeName(s){return (s||"RuneFoundry").normalize("NFKD").replace(/[^a-z0-9_-]+/gi,"-").replace(/^-+|-+$/g,"")||"RuneFoundry"}
+function makeFontPath(strokes,scale,minX,minY,radius){
+ const path=new opentype.Path();
+ const map=p=>[80+(p[0]-minX)*scale,700-(p[1]-minY)*scale];
+ const polygon=pts=>{if(pts.length<3)return;let q=map(pts[0]);path.moveTo(q[0],q[1]);for(let i=1;i<pts.length;i++){q=map(pts[i]);path.lineTo(q[0],q[1])}path.close()};
+ const disk=p=>{const pts=[];for(let i=0;i<16;i++){const a=2*Math.PI*i/16;pts.push([p[0]+Math.cos(a)*radius,p[1]+Math.sin(a)*radius])}polygon(pts)};
+ for(const line of strokes){if(!line.length)continue;if(line.length===1){disk(line[0]);continue}for(let i=0;i<line.length;i++){disk(line[i]);if(i===0)continue;const a=line[i-1],b=line[i],dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy);if(len<.01)continue;const nx=-dy/len*radius,ny=dx/len*radius;polygon([[a[0]+nx,a[1]+ny],[b[0]+nx,b[1]+ny],[b[0]-nx,b[1]-ny],[a[0]-nx,a[1]-ny]])}}
+ return path;
+}
+function exportTtf(){
+ const status=$("fontStatus");try{
+  if(!window.opentype?.Font||!window.opentype?.Glyph||!window.opentype?.Path)throw new Error("Не загрузился модуль генерации шрифтов. Проверь подключение к интернету и обнови страницу.");
+  const family=$("fontFamily").value.trim()||"RuneFoundry";if(family.length>48)throw new Error("Название шрифта должно быть не длиннее 48 символов.");
+  const glyphs=[new opentype.Glyph({name:".notdef",unicode:0,advanceWidth:700,path:new opentype.Path()}),new opentype.Glyph({name:"space",unicode:32,advanceWidth:320,path:new opentype.Path()})];
+  let count=0,skipped=[];
+  for(const [character,strokes] of Object.entries(state.glyphs)){
+   if(!strokes?.length)continue;
+   const chars=[...character];if(chars.length!==1){skipped.push(character);continue}
+   const points=strokes.flat();if(!points.length)continue;
+   const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+   const lineWidth=Math.max(2,+$("strokeWidth").value||5),scale=760/Math.max(1,maxX-minX+lineWidth,maxY-minY+lineWidth),radius=Math.max(1,lineWidth*scale/2);
+   const path=makeFontPath(strokes,scale,minX,minY,radius);
+   const code=character.codePointAt(0),name="uni"+code.toString(16).toUpperCase().padStart(4,"0");
+   glyphs.push(new opentype.Glyph({name,unicode:code,advanceWidth:Math.max(420,Math.ceil((maxX-minX)*scale+160)),path}));count++;
+  }
+  if(!count)throw new Error("Пока нет нарисованных знаков. Сначала создай хотя бы одну букву.");
+  const font=new opentype.Font({familyName:family,styleName:"Regular",unitsPerEm:1000,ascender:800,descender:-200,glyphs});
+  const buffer=font.toArrayBuffer(),bytes=new Uint8Array(buffer);
+  if(bytes.length<100||bytes[0]!==0||bytes[1]!==1||bytes[2]!==0||bytes[3]!==0)throw new Error("Проверка структуры TTF не пройдена. Файл не сохранён.");
+  dl(new Blob([buffer],{type:"font/ttf"}),fontSafeName(family)+".ttf");
+  status.textContent="Готово: создан TTF-шрифт «"+family+"» — знаков: "+count+(skipped.length?"; пропущены составные обозначения: "+skipped.join(", "):"")+".";
+ }catch(err){status.textContent="Не удалось создать шрифт: "+err.message;alert(status.textContent)}
+}
+$("fontTtfBtn").onclick=exportTtf;
+
 // ZIP archive writer, STORE method; no network dependency.
 let table=(()=>{let t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
 function crc(b){let c=0xffffffff;for(let x of b)c=table[(c^x)&255]^(c>>>8);return(c^0xffffffff)>>>0}
