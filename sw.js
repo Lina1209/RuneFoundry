@@ -1,4 +1,4 @@
-const CACHE="runefoundry-shell-v4";
+const CACHE="runefoundry-shell-v5";
 const FILES=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest","./assets/favicon.svg"];
 self.addEventListener("install",e=>e.waitUntil((async()=>{const c=await caches.open(CACHE);await c.addAll(FILES);await self.skipWaiting()})()));
 self.addEventListener("activate",e=>e.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith("runefoundry-")&&k!==CACHE).map(k=>caches.delete(k)));await self.clients.claim()})()));
